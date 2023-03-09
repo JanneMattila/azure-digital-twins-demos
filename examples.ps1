@@ -16,6 +16,20 @@ $body = ConvertTo-Json @{
     "value" = 69
 }
 
+$body = ConvertTo-Json @{ 
+    "_model"    = "dtmi:com:janneexample:car;1"
+    "_id"       = "Matiz"
+    "carStatus" = "Stopped"
+    "speed"     = 121.8
+}
+
+$body = ConvertTo-Json @{ 
+    "_model"     = "dtmi:com:janneexample:tyre;1"
+    "_id"        = "LeftFront"
+    "tyreStatus" = "OK"
+    "pressure"   = 2.3
+}
+
 $body
 
 Invoke-RestMethod `

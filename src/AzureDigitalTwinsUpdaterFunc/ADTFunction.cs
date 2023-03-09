@@ -1,9 +1,11 @@
 using Azure;
 using Azure.DigitalTwins.Core;
 using Azure.Identity;
+using AzureDigitalTwinsUpdaterFunc.Data;
 using Microsoft.Azure.DigitalTwins.Parser;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Text.Json;
 
 namespace AzureDigitalTwinsUpdaterFunc;
@@ -12,14 +14,16 @@ public class ADTFunction
 {
     private readonly ILogger _logger;
     private readonly ADTOptions _options;
+    private readonly IModelsRepository _modelsRepository;
     private readonly DigitalTwinsClient _client;
 
-    public ADTFunction(ILoggerFactory loggerFactory, ADTOptions options)
+    public ADTFunction(ILoggerFactory loggerFactory, IOptions<ADTOptions> options, IModelsRepository modelsRepository)
     {
         _logger = loggerFactory.CreateLogger<ADTFunction>();
-        _options = options;
+        _options = options.Value;
+        _modelsRepository = modelsRepository;
 
-        _client = new DigitalTwinsClient(new Uri(options.ADTInstanceUrl), new DefaultAzureCredential());
+        _client = new DigitalTwinsClient(new Uri(_options.ADTInstanceUrl), new DefaultAzureCredential());
     }
 
     [Function("ADTFunc")]
@@ -33,6 +37,19 @@ public class ADTFunction
                 _logger.LogTrace("Function processing message: {Input}", input);
                 var digitalTwinUpdateRequest = JsonSerializer.Deserialize<Dictionary<string, object>>(input);
 
+                if (digitalTwinUpdateRequest == null)
+                {
+                    _logger.LogError("Could not deserialize message: {Input}", input);
+                    continue;
+                }
+
+                if (!digitalTwinUpdateRequest.ContainsKey(_options.ModelFieldName) ||
+                    !digitalTwinUpdateRequest.ContainsKey(_options.IDFieldName))
+                {
+                    _logger.LogWarning("Message does not contain {ModelFieldName} or {IDFieldName}. Skipping.", _options.ModelFieldName, _options.IDFieldName);
+                    continue;
+                }
+
                 var modelID = digitalTwinUpdateRequest[_options.ModelFieldName].ToString();
                 var digitalTwinID = digitalTwinUpdateRequest[_options.IDFieldName].ToString();
 
@@ -41,26 +58,14 @@ public class ADTFunction
                 var digitalTwin = await _client.GetDigitalTwinAsync<BasicDigitalTwin>(digitalTwinID).ConfigureAwait(false);
                 var digitalTwinUpdate = new JsonPatchDocument();
 
-                var model = await _client.GetModelAsync(modelID);
-                var modelParser = new ModelParser
-                {
-                    DtmiResolver = async dtmis =>
-                    {
-                        var list = new List<string>();
-                        foreach (var dtmi in dtmis)
-                        {
-                            var extendsModel = await _client.GetModelAsync(dtmi.AbsoluteUri);
-                            list.Add(extendsModel.Value.DtdlModel);
-                        }
-                        return list;
-                    }
-                };
-                var parsedModel = await modelParser.ParseAsync(new List<string>() { model.Value.DtdlModel });
+                var fieldsAdded = 0;
+                var fieldsUpdated = 0;
 
-                foreach (var item in parsedModel.Values)
+                var model = await _modelsRepository.GetModelAsync(modelID);
+                foreach (var modelField in model)
                 {
-                    if (item.EntityKind == DTEntityKind.Property &&
-                        item is DTPropertyInfo propertyInfo)
+                    if (modelField.EntityKind == DTEntityKind.Property &&
+                        modelField is DTPropertyInfo propertyInfo)
                     {
                         var fieldName = propertyInfo.Name;
                         if (digitalTwinUpdateRequest.ContainsKey(fieldName))
@@ -70,16 +75,18 @@ public class ADTFunction
                             if (digitalTwin.Value.Contents.ContainsKey(fieldName))
                             {
                                 digitalTwinUpdate.AppendReplace($"/{fieldName}", fieldValue);
+                                fieldsUpdated++;
                             }
                             else
                             {
                                 digitalTwinUpdate.AppendAdd($"/{fieldName}", fieldValue);
+                                fieldsAdded++;
                             }
                         }
                     }
                 }
 
-                _logger.LogTrace("Updating digital twin with ID: {ID}", digitalTwinID);
+                _logger.LogInformation("Updating digital twin with ID: {ID} and added {FieldsAdded} and updated {FieldsUpdated} fields.", digitalTwinID, fieldsAdded, fieldsUpdated);
                 await _client.UpdateDigitalTwinAsync(digitalTwinID, digitalTwinUpdate, ETag.All).ConfigureAwait(false);
             }
             catch (Exception ex)

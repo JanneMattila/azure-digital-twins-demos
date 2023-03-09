@@ -2,7 +2,9 @@
 using Azure.Identity;
 using Microsoft.Azure.DigitalTwins.Parser;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace AzureDigitalTwinsUpdaterFunc.Data;
 
@@ -11,12 +13,12 @@ public class ModelsRepository : IModelsRepository
     private readonly ILogger _logger;
     private readonly ADTOptions _options;
     private readonly ConcurrentDictionary<string, List<DTEntityInfo>> _modelMap = new();
-    private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(0, 1);
+    private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
-    public ModelsRepository(ILoggerFactory loggerFactory, ADTOptions options)
+    public ModelsRepository(ILoggerFactory loggerFactory, IOptions<ADTOptions> options)
     {
         _logger = loggerFactory.CreateLogger<ModelsRepository>();
-        _options = options;
+        _options = options.Value;
     }
 
     public async Task<List<DTEntityInfo>> GetModelAsync(string modelId)
@@ -60,12 +62,16 @@ public class ModelsRepository : IModelsRepository
 
     private async Task UpdateModelsAsync()
     {
-        _logger.LogInformation($"Updating models cache");
-
+        using var scope = _logger.BeginScope("Updating models cache");
+        var stopWatch = Stopwatch.StartNew();
         var client = new DigitalTwinsClient(new Uri(_options.ADTInstanceUrl), new DefaultAzureCredential());
 
         var digitalTwinsModels = new Dictionary<string, DigitalTwinsModelData>();
-        await foreach (var item in client.GetModelsAsync())
+        var getModelOptions = new GetModelsOptions()
+        {
+            IncludeModelDefinition = true
+        };
+        await foreach (var item in client.GetModelsAsync(getModelOptions))
         {
             digitalTwinsModels.Add(item.Id, item);
         }
@@ -89,5 +95,7 @@ public class ModelsRepository : IModelsRepository
             var entityInfos = parsedModel.Values.ToList();
             _modelMap.AddOrUpdate(digitalTwinsModel.Key, entityInfos, (key, oldValue) => entityInfos);
         }
+
+        _logger.LogInformation("Update models cache finished in {Elapsed}", stopWatch.Elapsed);
     }
 }

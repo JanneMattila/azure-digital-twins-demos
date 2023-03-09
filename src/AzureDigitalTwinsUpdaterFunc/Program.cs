@@ -18,12 +18,7 @@ var host = new HostBuilder()
         s.AddOptions<ADTOptions>()
             .Configure<IConfiguration>((settings, configuration) =>
             {
-                var instanceUrl = Environment.GetEnvironmentVariable("ADT_INSTANCE_URL");
-                if (string.IsNullOrEmpty(instanceUrl))
-                {
-                    throw new ArgumentNullException("ADT_INSTANCE_URL is not set");
-                }
-                settings.ADTInstanceUrl = instanceUrl;
+                configuration.GetSection("ADTOptions").Bind(settings);
             });
 
         s.AddSingleton<IModelsRepository, ModelsRepository>();
