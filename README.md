@@ -21,7 +21,7 @@ Example payloads:
 {
   "_id": "Matiz",
   "_model": "dtmi:com:janneexample:car;1",
-  "carStatus": "Stopped",
+  "carStatus": "Moving",
   "speed": 121.8
 }
 ```
