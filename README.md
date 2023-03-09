@@ -40,7 +40,7 @@ Notice two special fields in the payload:
 - `_id` is identifier of the digital twin
 - `_model` is model name of the payload
 
-There are picked by [AzureDigitalTwinsUpdaterFunc](./src/AzureDigitalTwinsUpdaterFunc) which
+These are picked by [AzureDigitalTwinsUpdaterFunc](./src/AzureDigitalTwinsUpdaterFunc) which
 then processes mapping of incoming data to the target digital twin.
 
 **Note**: Only `Property` types in the model are updated by the updater.
