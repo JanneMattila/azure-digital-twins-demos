@@ -43,19 +43,19 @@ public class ADTFunction
                     continue;
                 }
 
-                if (!digitalTwinUpdateRequest.ContainsKey(_options.ModelFieldName) ||
-                    !digitalTwinUpdateRequest.ContainsKey(_options.IDFieldName))
+                if (!digitalTwinUpdateRequest.ContainsKey(_options.IDFieldName))
                 {
-                    _logger.LogWarning("Message does not contain {ModelFieldName} or {IDFieldName}. Skipping.", _options.ModelFieldName, _options.IDFieldName);
+                    _logger.LogWarning("Message does not contain {IDFieldName}. Skipping.", _options.IDFieldName);
                     continue;
                 }
 
-                var modelID = digitalTwinUpdateRequest[_options.ModelFieldName].ToString();
                 var digitalTwinID = digitalTwinUpdateRequest[_options.IDFieldName].ToString();
 
                 _logger.LogTrace("Fetching digital twin with ID: {ID}", digitalTwinID);
 
                 var digitalTwin = await _client.GetDigitalTwinAsync<BasicDigitalTwin>(digitalTwinID).ConfigureAwait(false);
+                var modelID = digitalTwin.Value.Metadata.ModelId;
+
                 var digitalTwinUpdate = new JsonPatchDocument();
 
                 var fieldsAdded = 0;

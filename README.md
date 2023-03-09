@@ -20,7 +20,6 @@ Example payloads:
 ```json
 {
   "_id": "Matiz",
-  "_model": "dtmi:com:janneexample:car;1",
   "carStatus": "Moving",
   "speed": 121.8
 }
@@ -29,18 +28,14 @@ Example payloads:
 ```json
 {
   "_id": "LeftFront",
-  "_model": "dtmi:com:janneexample:tyre;1",
   "tyreStatus": "OK",
   "pressure": 2.3
 }
 ```
 
-Notice two special fields in the payload:
+Note: `_id` is identifier of the digital twin.
 
-- `_id` is identifier of the digital twin
-- `_model` is model name of the payload
-
-These are picked by [AzureDigitalTwinsUpdaterFunc](./src/AzureDigitalTwinsUpdaterFunc) which
+These payloads are picked by [AzureDigitalTwinsUpdaterFunc](./src/AzureDigitalTwinsUpdaterFunc) which
 then processes mapping of incoming data to the target digital twin.
 
 **Note**: Only `Property` types in the model are updated by the updater.
