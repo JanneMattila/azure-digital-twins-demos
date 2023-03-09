@@ -4,7 +4,7 @@ Azure Digital Twins demos
 
 ## Updates From Event Hub to Azure Digital Twins
 
-You can find example models in [models](./models) folder for `Car` and `Tyre`.
+You can find example models in [car-demo](./models/car-demo) folder for `Car` and `Tyre`.
 
 ```mermaid
 sequenceDiagram
@@ -43,7 +43,17 @@ Notice two special fields in the payload:
 There are picked by [AzureDigitalTwinsUpdaterFunc](./src/AzureDigitalTwinsUpdaterFunc) which
 then processes mapping of incoming data to the target digital twin.
 
+**Note**: Only `Property` types in the model are updated by the updater.
+
 You can send events to Event Hub using [examples.ps1](./examples.ps1) script.
+
+Example search in Azure Digital Twin Explorer to find all these twins:
+
+```sql
+SELECT * FROM digitaltwins WHERE STARTSWITH($metadata.$model, 'dtmi:com:janneexample')
+```
+
+![Azure Digital Twin Explorer showing there twins](https://user-images.githubusercontent.com/2357647/223973828-1862eaeb-8dec-4bd3-8781-bb8e92ff460e.png)
 
 ## Links
 
