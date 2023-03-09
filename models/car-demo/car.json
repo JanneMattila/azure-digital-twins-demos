@@ -1,0 +1,34 @@
+{
+    "@context": "dtmi:dtdl:context;2",
+    "@id": "dtmi:com:janneexample:car;1",
+    "@type": "Interface",
+    "displayName": "Car",
+    "contents": [
+        {
+            "@type": "Property",
+            "name": "speed",
+            "schema": "double"
+        },
+        {
+            "@type": "Property",
+            "name": "carStatus",
+            "schema": "string"
+        },
+        {
+            "@type": "Command",
+            "name": "engineCheck",
+            "request": {
+                "name": "logLevel",
+                "schema": "integer"
+            }
+        },
+        {
+            "@type": "Relationship",
+            "name": "contains",
+            "description": "Contains",
+            "displayName": "contains",
+            "comment": "Car has 4 tyres",
+            "target": "dtmi:com:janneexample:tyre;1"
+        }
+    ]
+}
