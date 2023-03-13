@@ -50,6 +50,30 @@ SELECT * FROM digitaltwins WHERE STARTSWITH($metadata.$model, 'dtmi:com:janneexa
 
 ![Azure Digital Twin Explorer showing there twins](https://user-images.githubusercontent.com/2357647/223973828-1862eaeb-8dec-4bd3-8781-bb8e92ff460e.png)
 
+### Deployment to Azure
+
+Key deployment steps:
+
+- Create Azure Digital Twin
+  - Load example models into it from [car-demo](./models/car-demo)
+- Create Event Hub namespace
+  - Create `adt` Event Hub and copy connection string
+- Create Azure Functions App
+  - App Settings to Function App
+      - `ADTOptions__ADTInstanceUrl` e.g., `https://<your-adt-instance>.api.neu.digitaltwins.azure.net/`
+      - `ADTOptions__IDFieldName` e.g., `_id`
+      - `EventHubName` e.g., `adt`
+      - `EventHubConnectionString` e.g., `Endpoint=sb://<your-eventhub-instance>.servicebus.windows.net/;SharedAccessKeyName=...` 
+  - Enable System Assigned Managed Identity
+- Add Role Assignment: `Azure Digital Twins Data Owner` role to the managed identity of Azure Functions App
+- Deploy using Visual Studio to Azure Functions app
+  - Visual Studio will validate that settings in Azure Function App are correct e.g., 
+    `FUNCTIONS_WORKER_RUNTIME=dotnet-isolated` and `FUNCTIONS_EXTENSION_VERSION=~4`
+
 ## Links
+
+[Azure Digital Twins getting started samples](https://github.com/Azure-Samples/azure-digital-twins-getting-started)
+
+[Azure Digital Twins APIs and SDKs](https://learn.microsoft.com/en-us/azure/digital-twins/concepts-apis-sdks)
 
 [Learn about twin models and how to define them in Azure Digital Twins](https://learn.microsoft.com/en-us/azure/digital-twins/concepts-models)

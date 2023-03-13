@@ -27,7 +27,7 @@ public class ADTFunction
     }
 
     [Function("ADTFunc")]
-    public async Task Run([EventHubTrigger("adt", Connection = "EventHubConnectionString")] string[] inputs)
+    public async Task Run([EventHubTrigger("%EventHubName%", Connection = "EventHubConnectionString")] string[] inputs)
     {
         var exceptions = new List<Exception>();
         foreach (var input in inputs)
