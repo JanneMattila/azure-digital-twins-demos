@@ -25,14 +25,43 @@ $body = ConvertTo-Json @{
 $body = ConvertTo-Json @{ 
     "_id"        = "LeftFront"
     "tyreStatus" = "OK"
-    "pressure"   = 2.3
+    "pressure"   = 1.6
 }
 
 $body
 
+###########################
+# To send single message
 Invoke-RestMethod `
     -Body $body `
     -ContentType "application/atom+xml;type=entry;charset=utf-8" `
+    -Method "POST" `
+    -Authentication Bearer `
+    -Token $secureAccessToken `
+    -Uri $url
+
+
+###########################
+# To send batch of messages
+$body = ConvertTo-Json @(
+    @{ 
+        "Body" = ConvertTo-Json @{
+            "_id"       = "Matiz"
+            "carStatus" = "Stopping"
+            "speed"     = 2.3
+        }
+    }
+    @{ 
+        "Body" = ConvertTo-Json @{
+            "_id"        = "LeftFront"
+            "tyreStatus" = "Flat"
+            "pressure"   = 2.6
+        }
+    })
+
+Invoke-RestMethod `
+    -Body $body `
+    -ContentType "application/vnd.microsoft.servicebus.json" `
     -Method "POST" `
     -Authentication Bearer `
     -Token $secureAccessToken `
