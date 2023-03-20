@@ -43,51 +43,20 @@ public class ADTFunction
                     continue;
                 }
 
-                if (!digitalTwinUpdateRequest.ContainsKey(_options.IDFieldName))
+                if (string.IsNullOrEmpty(_options.ProcessingLogic) == true ||
+                    string.Compare(_options.ProcessingLogic, "ByID", true) == 0)
                 {
-                    _logger.LogWarning("Message does not contain {IDFieldName}. Skipping.", _options.IDFieldName);
+                    await ProcessByIDField(digitalTwinUpdateRequest);
+                }
+                else if (string.Compare(_options.ProcessingLogic, "ByChild", true) == 0)
+                {
+                    await ProcessByChildField(digitalTwinUpdateRequest);
+                }
+                else
+                {
+                    _logger.LogError("Unsupported processing logic type: {ProcessingLogic}", _options.ProcessingLogic);
                     continue;
                 }
-
-                var digitalTwinID = digitalTwinUpdateRequest[_options.IDFieldName].ToString();
-
-                _logger.LogTrace("Fetching digital twin with ID: {ID}", digitalTwinID);
-
-                var digitalTwin = await _client.GetDigitalTwinAsync<BasicDigitalTwin>(digitalTwinID).ConfigureAwait(false);
-                var modelID = digitalTwin.Value.Metadata.ModelId;
-
-                var digitalTwinUpdate = new JsonPatchDocument();
-
-                var fieldsAdded = 0;
-                var fieldsUpdated = 0;
-
-                var model = await _modelsRepository.GetModelAsync(modelID);
-                foreach (var modelField in model)
-                {
-                    if (modelField.EntityKind == DTEntityKind.Property &&
-                        modelField is DTPropertyInfo propertyInfo)
-                    {
-                        var fieldName = propertyInfo.Name;
-                        if (digitalTwinUpdateRequest.ContainsKey(fieldName))
-                        {
-                            var fieldValue = digitalTwinUpdateRequest[fieldName];
-
-                            if (digitalTwin.Value.Contents.ContainsKey(fieldName))
-                            {
-                                digitalTwinUpdate.AppendReplace($"/{fieldName}", fieldValue);
-                                fieldsUpdated++;
-                            }
-                            else
-                            {
-                                digitalTwinUpdate.AppendAdd($"/{fieldName}", fieldValue);
-                                fieldsAdded++;
-                            }
-                        }
-                    }
-                }
-
-                _logger.LogInformation("Updating digital twin with ID: {ID} and added {FieldsAdded} and updated {FieldsUpdated} fields.", digitalTwinID, fieldsAdded, fieldsUpdated);
-                await _client.UpdateDigitalTwinAsync(digitalTwinID, digitalTwinUpdate, ETag.All).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -105,5 +74,103 @@ public class ADTFunction
         {
             throw exceptions.Single();
         }
+    }
+
+    private async Task ProcessByIDField(Dictionary<string, object> digitalTwinUpdateRequest)
+    {
+        if (!digitalTwinUpdateRequest.ContainsKey(_options.IDFieldName))
+        {
+            _logger.LogWarning("Message does not contain {IDFieldName}. Skipping.", _options.IDFieldName);
+            return;
+        }
+
+        var digitalTwinID = digitalTwinUpdateRequest[_options.IDFieldName].ToString();
+
+        _logger.LogTrace("Fetching digital twin with ID: {ID}", digitalTwinID);
+
+        var digitalTwin = await _client.GetDigitalTwinAsync<BasicDigitalTwin>(digitalTwinID).ConfigureAwait(false);
+        var modelID = digitalTwin.Value.Metadata.ModelId;
+
+        var digitalTwinUpdate = new JsonPatchDocument();
+
+        var fieldsAdded = 0;
+        var fieldsUpdated = 0;
+
+        var model = await _modelsRepository.GetModelAsync(modelID);
+        foreach (var modelField in model)
+        {
+            if (modelField.EntityKind == DTEntityKind.Property &&
+                modelField is DTPropertyInfo propertyInfo)
+            {
+                var fieldName = propertyInfo.Name;
+                if (digitalTwinUpdateRequest.ContainsKey(fieldName))
+                {
+                    var fieldValue = digitalTwinUpdateRequest[fieldName];
+
+                    if (digitalTwin.Value.Contents.ContainsKey(fieldName))
+                    {
+                        digitalTwinUpdate.AppendReplace($"/{fieldName}", fieldValue);
+                        fieldsUpdated++;
+                    }
+                    else
+                    {
+                        digitalTwinUpdate.AppendAdd($"/{fieldName}", fieldValue);
+                        fieldsAdded++;
+                    }
+                }
+            }
+        }
+
+        _logger.LogInformation("Updating digital twin with ID: {ID} and added {FieldsAdded} and updated {FieldsUpdated} fields.", digitalTwinID, fieldsAdded, fieldsUpdated);
+        await _client.UpdateDigitalTwinAsync(digitalTwinID, digitalTwinUpdate, ETag.All).ConfigureAwait(false);
+    }
+
+    private async Task ProcessByChildField(Dictionary<string, object> digitalTwinUpdateRequest)
+    {
+        if (!digitalTwinUpdateRequest.ContainsKey(_options.IDFieldName))
+        {
+            _logger.LogWarning("Message does not contain {IDFieldName}. Skipping.", _options.IDFieldName);
+            return;
+        }
+
+        var digitalTwinID = digitalTwinUpdateRequest[_options.IDFieldName].ToString();
+
+        _logger.LogTrace("Fetching digital twin with ID: {ID}", digitalTwinID);
+
+        var digitalTwin = await _client.GetDigitalTwinAsync<BasicDigitalTwin>(digitalTwinID).ConfigureAwait(false);
+        var modelID = digitalTwin.Value.Metadata.ModelId;
+
+        var digitalTwinUpdate = new JsonPatchDocument();
+
+        var fieldsAdded = 0;
+        var fieldsUpdated = 0;
+
+        var model = await _modelsRepository.GetModelAsync(modelID);
+        foreach (var modelField in model)
+        {
+            if (modelField.EntityKind == DTEntityKind.Property &&
+                modelField is DTPropertyInfo propertyInfo)
+            {
+                var fieldName = propertyInfo.Name;
+                if (digitalTwinUpdateRequest.ContainsKey(fieldName))
+                {
+                    var fieldValue = digitalTwinUpdateRequest[fieldName];
+
+                    if (digitalTwin.Value.Contents.ContainsKey(fieldName))
+                    {
+                        digitalTwinUpdate.AppendReplace($"/{fieldName}", fieldValue);
+                        fieldsUpdated++;
+                    }
+                    else
+                    {
+                        digitalTwinUpdate.AppendAdd($"/{fieldName}", fieldValue);
+                        fieldsAdded++;
+                    }
+                }
+            }
+        }
+
+        _logger.LogInformation("Updating digital twin with ID: {ID} and added {FieldsAdded} and updated {FieldsUpdated} fields.", digitalTwinID, fieldsAdded, fieldsUpdated);
+        await _client.UpdateDigitalTwinAsync(digitalTwinID, digitalTwinUpdate, ETag.All).ConfigureAwait(false);
     }
 }

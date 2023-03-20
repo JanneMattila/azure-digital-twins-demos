@@ -19,3 +19,5 @@
 //};
 
 //var parsedModel = await parser.ParseAsync(new List<string>() { dtdlModel });
+
+Console.WriteLine("Placeholder");
