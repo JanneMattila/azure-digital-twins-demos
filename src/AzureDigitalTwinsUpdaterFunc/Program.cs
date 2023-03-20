@@ -22,6 +22,7 @@ var host = new HostBuilder()
             });
 
         s.AddSingleton<IModelsRepository, ModelsRepository>();
+        s.AddSingleton<ITwinsCacheRepository, TwinsCacheRepository>();
     })
     .Build();
 

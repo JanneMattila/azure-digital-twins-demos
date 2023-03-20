@@ -15,13 +15,15 @@ public class ADTFunction
     private readonly ILogger _logger;
     private readonly ADTOptions _options;
     private readonly IModelsRepository _modelsRepository;
+    private readonly ITwinsCacheRepository _twinsCacheRepository;
     private readonly DigitalTwinsClient _client;
 
-    public ADTFunction(ILoggerFactory loggerFactory, IOptions<ADTOptions> options, IModelsRepository modelsRepository)
+    public ADTFunction(ILoggerFactory loggerFactory, IOptions<ADTOptions> options, IModelsRepository modelsRepository, ITwinsCacheRepository twinsCacheRepository)
     {
         _logger = loggerFactory.CreateLogger<ADTFunction>();
         _options = options.Value;
         _modelsRepository = modelsRepository;
+        _twinsCacheRepository = twinsCacheRepository;
 
         _client = new DigitalTwinsClient(new Uri(_options.ADTInstanceUrl), new DefaultAzureCredential());
     }
@@ -133,44 +135,38 @@ public class ADTFunction
             return;
         }
 
-        var digitalTwinID = digitalTwinUpdateRequest[_options.IDFieldName].ToString();
+        var key = digitalTwinUpdateRequest[_options.IDFieldName].ToString();
+        digitalTwinUpdateRequest.Remove(_options.IDFieldName);
 
-        _logger.LogTrace("Fetching digital twin with ID: {ID}", digitalTwinID);
-
-        var digitalTwin = await _client.GetDigitalTwinAsync<BasicDigitalTwin>(digitalTwinID).ConfigureAwait(false);
-        var modelID = digitalTwin.Value.Metadata.ModelId;
-
-        var digitalTwinUpdate = new JsonPatchDocument();
-
-        var fieldsAdded = 0;
-        var fieldsUpdated = 0;
-
-        var model = await _modelsRepository.GetModelAsync(modelID);
-        foreach (var modelField in model)
+        foreach (var item in digitalTwinUpdateRequest)
         {
-            if (modelField.EntityKind == DTEntityKind.Property &&
-                modelField is DTPropertyInfo propertyInfo)
+            var childPropertyName = item.Key;
+            _logger.LogTrace("Fetching digital twin with key: {Key} and child property name: {ChildPropertyName}", key, childPropertyName);
+
+            var childDigitalTwinID = await _twinsCacheRepository.GetChildFromCacheAsync(key, childPropertyName);
+
+            var digitalTwin = await _client.GetDigitalTwinAsync<BasicDigitalTwin>(childDigitalTwinID).ConfigureAwait(false);
+            var digitalTwinUpdate = new JsonPatchDocument();
+
+            var fieldsAdded = 0;
+            var fieldsUpdated = 0;
+            var fieldName = "OPCUANodeValue";
+
+            var fieldValue = digitalTwinUpdateRequest[item.Key];
+
+            if (digitalTwin.Value.Contents.ContainsKey(fieldName))
             {
-                var fieldName = propertyInfo.Name;
-                if (digitalTwinUpdateRequest.ContainsKey(fieldName))
-                {
-                    var fieldValue = digitalTwinUpdateRequest[fieldName];
-
-                    if (digitalTwin.Value.Contents.ContainsKey(fieldName))
-                    {
-                        digitalTwinUpdate.AppendReplace($"/{fieldName}", fieldValue);
-                        fieldsUpdated++;
-                    }
-                    else
-                    {
-                        digitalTwinUpdate.AppendAdd($"/{fieldName}", fieldValue);
-                        fieldsAdded++;
-                    }
-                }
+                digitalTwinUpdate.AppendReplace($"/{fieldName}", item.Value);
+                fieldsUpdated++;
             }
-        }
+            else
+            {
+                digitalTwinUpdate.AppendAdd($"/{fieldName}", item.Value);
+                fieldsAdded++;
+            }
 
-        _logger.LogInformation("Updating digital twin with ID: {ID} and added {FieldsAdded} and updated {FieldsUpdated} fields.", digitalTwinID, fieldsAdded, fieldsUpdated);
-        await _client.UpdateDigitalTwinAsync(digitalTwinID, digitalTwinUpdate, ETag.All).ConfigureAwait(false);
+            _logger.LogInformation("Updating child digital twin with ID: {ID} and added {FieldsAdded} and updated {FieldsUpdated} fields.", childDigitalTwinID, fieldsAdded, fieldsUpdated);
+            await _client.UpdateDigitalTwinAsync(childDigitalTwinID, digitalTwinUpdate, ETag.All).ConfigureAwait(false);
+        }
     }
 }
