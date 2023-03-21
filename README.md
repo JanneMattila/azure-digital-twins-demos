@@ -4,8 +4,6 @@ Azure Digital Twins demos
 
 ## Updates From Event Hub to Azure Digital Twins
 
-You can find example models in [car-demo](./models/car-demo) folder for `Car` and `Tyre`.
-
 ```mermaid
 sequenceDiagram
     Note right of On-premises App: See JSON<br/>payload below
@@ -14,6 +12,10 @@ sequenceDiagram
     Note right of Azure Functions: Map fields from<br/>payload to digital<br/>twin model definitions
     Azure Functions->>Azure Digital Twins: Update digital twin
 ```
+
+### Using static structure
+
+You can find example models in [car-demo](./models/car-demo) folder for `Car` and `Tyre`.
 
 Example payloads if `ProcessingLogic` is set to `ByID`:
 
@@ -48,7 +50,28 @@ Example search in Azure Digital Twin Explorer to find all these twins:
 SELECT * FROM digitaltwins WHERE STARTSWITH($metadata.$model, 'dtmi:com:janneexample')
 ```
 
-![Azure Digital Twin Explorer showing there twins](https://user-images.githubusercontent.com/2357647/223973828-1862eaeb-8dec-4bd3-8781-bb8e92ff460e.png)
+![Azure Digital Twin Explorer showing these twins](https://user-images.githubusercontent.com/2357647/223973828-1862eaeb-8dec-4bd3-8781-bb8e92ff460e.png)
+
+### Using dynamic structure
+
+You can find example models in [ISA95](https://github.com/digitaltwinconsortium/UA-CloudTwin/tree/main/Applications/ISA95) folder for `OPCUANodeset` and `OPCUANodeInteger`.
+Using these models, you can create dynamic structure to represent values in child twins.
+
+Example payloads if `ProcessingLogic` is set to `ByChild`:
+
+```json
+{
+  "_id": "myeq123",
+  "MyValue1": 8,
+  "MyValue2": 12
+}
+```
+
+```sql
+SELECT T, CT FROM digitaltwins T JOIN CT RELATED T.contains WHERE T.$dtId = '50001'
+```
+
+![Azure Digital Twin Explorer showing these generic twins](https://user-images.githubusercontent.com/2357647/226597335-ac56576e-0e13-4ec5-a314-7fd0d5933f72.png)
 
 ### Deployment to Azure
 
