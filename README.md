@@ -62,6 +62,9 @@ Key deployment steps:
   - App Settings to Function App
       - `ADTOptions__ADTInstanceUrl` e.g., `https://<your-adt-instance>.api.neu.digitaltwins.azure.net/`
       - `ADTOptions__IDFieldName` e.g., `_id`
+      - `ADTOptions__ProcessingLogic` either `ByID` or `ByChild`
+        - `ByID` searches by digital twin id `$dtId`. Found twin is directly updated.
+        - `ByChild` searches parent digital twin by `equipmentID`, finds all children twins by `ID` and updates child twins `OPCUANodeValue` property.
       - `EventHubName` e.g., `adt`
       - `EventHubConnectionString` e.g., `Endpoint=sb://<your-eventhub-instance>.servicebus.windows.net/;SharedAccessKeyName=...` 
   - Enable System Assigned Managed Identity
