@@ -15,7 +15,7 @@ sequenceDiagram
     Azure Functions->>Azure Digital Twins: Update digital twin
 ```
 
-Example payloads:
+Example payloads if `ProcessingLogic` is set to `ByID`:
 
 ```json
 {
