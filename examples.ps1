@@ -66,3 +66,30 @@ Invoke-RestMethod `
     -Authentication Bearer `
     -Token $secureAccessToken `
     -Uri $url
+
+# For SAS token based auth
+# https://learn.microsoft.com/en-us/rest/api/eventhub/generate-sas-token
+# https://learn.microsoft.com/en-us/rest/api/eventhub/event-hubs-runtime-rest
+       
+[Reflection.Assembly]::LoadWithPartialName("System.Web") | out-null
+$accessPolicyName = "Send"
+$accessPolicyKey = "<key from 'Send' policy with Send claims>"
+# Token expiration 10 years
+$expires = [string](([DateTimeOffset]::Now.ToUnixTimeSeconds()) + 24 * 60 * 60 * 365 * 10)
+$signatureString = [System.Web.HttpUtility]::UrlEncode($url) + "`n$expires"
+$hmac = New-Object System.Security.Cryptography.HMACSHA256
+$hmac.key = [Text.Encoding]::ASCII.GetBytes($accessPolicyKey)
+$signature = $hmac.ComputeHash([Text.Encoding]::ASCII.GetBytes($signatureString))
+$signature = [Convert]::ToBase64String($Signature)
+$sasToken = "sr=" + [System.Web.HttpUtility]::UrlEncode($url) + `
+    "&sig=" + [System.Web.HttpUtility]::UrlEncode($Signature) + `
+    "&se=" + $expires + `
+    "&skn=" + $accessPolicyName
+$sasToken
+
+Invoke-RestMethod `
+    -Body $body `
+    -Headers @{"Authorization" = "SharedAccessSignature $sasToken" } `
+    -ContentType "application/atom+xml;type=entry;charset=utf-8" `
+    -Method "POST" `
+    -Uri $url
