@@ -7,6 +7,8 @@
     "EventHubName": "adt",
     "ADTOptions:ADTInstanceUrl": "https://<your-adt-instance>.digitaltwins.azure.net",
     "ADTOptions:IDFieldName": "_id",
+    "ADTOptions:DataFieldName": "DataField",
+    "ADTOptions:DataValueFieldName": "DataValue",
     "ADTOptions:ProcessingLogic": "ByID"
   }
 }

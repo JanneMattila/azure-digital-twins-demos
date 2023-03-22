@@ -54,6 +54,10 @@ public class ADTFunction
                 {
                     await ProcessByChildField(digitalTwinUpdateRequest);
                 }
+                else if (string.Compare(_options.ProcessingLogic, "ByFixedSchema", true) == 0)
+                {
+                    await ProcessByFixedSchemaField(digitalTwinUpdateRequest);
+                }
                 else
                 {
                     _logger.LogError("Unsupported processing logic type: {ProcessingLogic}", _options.ProcessingLogic);
@@ -168,5 +172,53 @@ public class ADTFunction
             _logger.LogInformation("Updating child digital twin with ID: {ID} and added {FieldsAdded} and updated {FieldsUpdated} fields.", childDigitalTwinID, fieldsAdded, fieldsUpdated);
             await _client.UpdateDigitalTwinAsync(childDigitalTwinID, digitalTwinUpdate, ETag.All).ConfigureAwait(false);
         }
+    }
+
+    private async Task ProcessByFixedSchemaField(Dictionary<string, object> digitalTwinUpdateRequest)
+    {
+        if (!digitalTwinUpdateRequest.ContainsKey(_options.IDFieldName))
+        {
+            _logger.LogWarning("Message does not contain {IDFieldName}. Skipping.", _options.IDFieldName);
+            return;
+        }
+        else if (!digitalTwinUpdateRequest.ContainsKey(_options.DataFieldName))
+        {
+            _logger.LogWarning("Message does not contain {DataFieldName}. Skipping.", _options.DataFieldName);
+            return;
+        }
+        else if (!digitalTwinUpdateRequest.ContainsKey(_options.DataValueFieldName))
+        {
+            _logger.LogWarning("Message does not contain {DataFieldName}. Skipping.", _options.DataValueFieldName);
+            return;
+        }
+
+        var key = digitalTwinUpdateRequest[_options.IDFieldName].ToString();
+        var fieldName = digitalTwinUpdateRequest[_options.DataFieldName].ToString();
+        var fieldValue = digitalTwinUpdateRequest[_options.DataValueFieldName];
+
+        _logger.LogTrace("Fetching digital twin with key: {Key} and child property name: {ChildPropertyName}", key, fieldName);
+
+        var childDigitalTwinID = await _twinsCacheRepository.GetChildFromCacheAsync(key, fieldName);
+
+        var digitalTwin = await _client.GetDigitalTwinAsync<BasicDigitalTwin>(childDigitalTwinID).ConfigureAwait(false);
+        var digitalTwinUpdate = new JsonPatchDocument();
+
+        var fieldsAdded = 0;
+        var fieldsUpdated = 0;
+        var targetFieldName = "OPCUANodeValue";
+
+        if (digitalTwin.Value.Contents.ContainsKey(targetFieldName))
+        {
+            digitalTwinUpdate.AppendReplace($"/{targetFieldName}", fieldValue);
+            fieldsUpdated++;
+        }
+        else
+        {
+            digitalTwinUpdate.AppendAdd($"/{targetFieldName}", fieldValue);
+            fieldsAdded++;
+        }
+
+        _logger.LogInformation("Updating child digital twin with ID: {ID} and added {FieldsAdded} and updated {FieldsUpdated} fields.", childDigitalTwinID, fieldsAdded, fieldsUpdated);
+        await _client.UpdateDigitalTwinAsync(childDigitalTwinID, digitalTwinUpdate, ETag.All).ConfigureAwait(false);
     }
 }
